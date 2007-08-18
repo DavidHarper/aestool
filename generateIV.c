@@ -18,7 +18,7 @@ unsigned char * generateIV() {
   for (i = 0; i < NWORDS; i++)
     randdata[i] = lrand48();
 
-  sha2_starts(&sha_ctx);
+  sha2_starts(&sha_ctx, 0);
   sha2_update(&sha_ctx, (unsigned char *)randdata, sizeof(randdata));
   sha2_finish(&sha_ctx, IV);
 

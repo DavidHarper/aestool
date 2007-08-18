@@ -77,7 +77,7 @@ int main(int argc, char **argv) {
 
   rc = strlen((char *)buffer);
   
-  sha2_starts(&sha_ctx);
+  sha2_starts(&sha_ctx, 0);
   sha2_update(&sha_ctx, buffer, rc);
   sha2_finish(&sha_ctx, key);
 
