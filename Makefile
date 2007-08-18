@@ -29,4 +29,9 @@ aestool: $(AESTOOL_OBJS)
 	$(LD) -o $@ $(LDOPTS) $(AESTOOL_OBJS) $(LDLIBS)
 
 clean:
-	/bin/rm -f *.o aestool
+	/bin/rm -f *.o aestool aestool.tgz
+
+tarball: aestool.tgz
+
+aestool.tgz:
+	tar zcvf $@ *.c *.h Makefile
