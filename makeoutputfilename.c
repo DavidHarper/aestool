@@ -7,41 +7,41 @@
 
 #include "aestool.h"
 
-char * makeOutputFileName(char *infilename, int mode) {
+char * makeOutputFileName(char *infilename, int mode, int suffixmode, char *suffix) {
   char *outfilename = NULL;
   int namelen;
-  char *suffix;
+  int suffixlen;
   struct stat stat_buf;
   int rc;
+  char *lastdot;
 
   if (infilename == NULL || (mode != ENCRYPT && mode != DECRYPT))
     return NULL;
 
+  if (suffix == NULL)
+    suffix = (mode == ENCRYPT) ? "aes" : "raw";
+
   namelen = strlen(infilename);
+  suffixlen = strlen(suffix);
+  lastdot = rindex(infilename, '.');
 
-  if (mode == ENCRYPT) {
-    outfilename = malloc(namelen + 5);
+  if (suffixmode == APPEND || lastdot == NULL) {
+    outfilename = malloc(namelen + suffixlen + 2);
     strcpy(outfilename, infilename);
-    strcat(outfilename, ".aes");
-  } else {
-    suffix = rindex(infilename, '.');
-
-    if (suffix != NULL && strcmp(suffix, ".aes") == 0) {
-      outfilename = strdup(infilename);
-      outfilename[namelen - 4] = '\0';
-
-      rc = stat(outfilename, &stat_buf);
-      if (rc == 0) {
-	free(outfilename);
-	outfilename = NULL;
-      }
-    } 
-
-    if (outfilename == NULL) {
-      outfilename = malloc(namelen + 5);
-      strcpy(outfilename, infilename);
-      strcat(outfilename, ".raw");
-    }
+    strcat(outfilename, ".");
+    strcat(outfilename, suffix);
+  } else if (suffixmode == REPLACE) {
+    namelen -= suffixlen+1;
+    outfilename = malloc(namelen + suffixlen + 2);
+    strncpy(outfilename, infilename, namelen);
+    outfilename[namelen] = '\0';
+    strcat(outfilename, ".");
+    strcat(outfilename, suffix);  
+  } else if (suffixmode == REMOVE) {
+    namelen -= suffixlen+1;
+    outfilename = malloc(namelen + 1);
+    strncpy(outfilename, infilename, namelen);
+    outfilename[namelen] = '\0';
   }
 
   return outfilename;    

@@ -3,12 +3,20 @@
 #include <stdio.h>
 
 /*
- * Mode values
+ * Encryption mode values
  */
 
 #define UNKNOWN 0
 #define ENCRYPT 1
 #define DECRYPT 2
+
+/*
+ * Filename suffix mode values
+ */
+
+#define APPEND 1
+#define REPLACE 2
+#define REMOVE 3
 
 /*
  * Error codes
@@ -27,7 +35,7 @@ int getPassphrase(FILE *infile, char *buffer, int size, int mode);
 
 unsigned char * generateIV();
 
-char * makeOutputFileName(char *infilename, int mode);
+char * makeOutputFileName(char *infilename, int mode, int suffixmode, char *suffix);
 
 int encryptFile(FILE *infile, unsigned char *IV, unsigned char *key, FILE *outfile);
 

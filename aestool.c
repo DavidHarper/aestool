@@ -14,6 +14,35 @@
 
 #define BUFSIZE 1024
 
+static void printUsage(FILE *fp, char *progname) {
+  fprintf(fp, "Usage: %s -e|-d [optional parameters] [filename]\n\n", progname);
+  fprintf(fp, "MANDATORY EXCLUSIVE PARAMETERS:\n");
+  fprintf(fp, "\t-e\t\tEncrypt input\n");
+  fprintf(fp, "\t-d\t\tDecrypt input\n");
+  fprintf(fp, "\n");
+  fprintf(fp, "If no named input files are specified, the program will try to\n");
+  fprintf(fp, "encrypt/decrypt data from standard input and write the result to\n");
+  fprintf(fp, "standard output.  When the program is run in this mode, the use of\n");
+  fprintf(fp, "the -p option is strongly encouraged.\n");
+  fprintf(fp, "\n");
+  fprintf(fp, "OPTIONAL PARAMETERS:\n");
+  fprintf(fp, "\t-p filename\tRead passphrase from this file\n");
+  fprintf(fp, "\n");
+  fprintf(fp, "If this parameter is not specified, the program will try to\n");
+  fprintf(fp, "read the passphrase from the standard input.  If the program\n");
+  fprintf(fp, "is being used in pipe mode, this will almost certainly fail.\n");
+  fprintf(fp, "\n");
+  fprintf(fp, "EXCLUSIVE OPTIONAL PARAMETERS:\n");
+  fprintf(fp, "\t-s suffix\tAppend this suffix to create output file names\n");
+  fprintf(fp, "\t-S suffix\tReplace suffix of input file name with this suffix\n\t\t\tto create output file name\n");
+  fprintf(fp, "\t-r\t\tRemove the suffix of the input file name to create output\n\t\t\tfile name\n");
+  fprintf(fp, "\n");
+  fprintf(fp, "The default behaviour with named input files is to create\n");
+  fprintf(fp, "output file names by appending .aes when encrypting and .raw\n");
+  fprintf(fp, "when decrypting.  No check is made to determine whether the\n");
+  fprintf(fp, "destination file already exists!\n");
+}
+
 int main(int argc, char **argv) {
   sha2_context sha_ctx;
   aes_context aes_ctx;
@@ -28,6 +57,10 @@ int main(int argc, char **argv) {
   char *infilename = NULL;
   char *outfilename;
 
+  int suffixmode = APPEND;
+
+  char *suffix = NULL;
+
   char *passfilename = NULL;
 
   char *progname= argv[0];
@@ -37,24 +70,34 @@ int main(int argc, char **argv) {
   for (argv++; *argv != NULL  && **argv == '-'; argv++) {
     if (strcmp(*argv, "-e") == 0) {
       if (mode == DECRYPT) {
-	fprintf(stderr, "%s: -d and -e are mutually exclusive options\n", progname);
+	fprintf(stderr, "%s: -d and -e are mutually exclusive options\n\n", progname);
+	printUsage(stderr, progname);
 	return 1;
       }
 
       mode = ENCRYPT;
     } else if (strcmp(*argv, "-d") == 0) {
       if (mode == ENCRYPT) {
-	fprintf(stderr, "%s: -d and -e are mutually exclusive options\n", progname);
+	fprintf(stderr, "%s: -d and -e are mutually exclusive options\n\n", progname);
+	printUsage(stderr, progname);
 	return 1;
       }
 
       mode = DECRYPT;
     } else if (strcmp(*argv, "-p") == 0)
       passfilename = *(++argv);
+    else if (strcmp(*argv, "-s") == 0) {
+      suffixmode = APPEND;
+      suffix = *(++argv);
+    } else if (strcmp(*argv, "-S") == 0) {
+      suffixmode = REPLACE;
+      suffix = *(++argv);
+    } else if (strcmp(*argv, "-r") == 0)
+      suffixmode = REMOVE;
   }
 
   if (mode == UNKNOWN) {
-    fprintf(stderr, "%s: you must specify either -e for encryption or -d for decryption\n", progname);
+    printUsage(stderr, progname);
     return 1;
   }
 
@@ -87,7 +130,7 @@ int main(int argc, char **argv) {
 
   infile = (infilename != NULL) ? fopen(infilename, "rb") : stdin;
 
-  outfilename = makeOutputFileName(infilename, mode);
+  outfilename = makeOutputFileName(infilename, mode, suffixmode, suffix);
 
   outfile = (outfilename != NULL) ? fopen(outfilename, "wb") : stdout;
 
@@ -98,9 +141,9 @@ int main(int argc, char **argv) {
     fread(IV, 1, 16, infile);
   }
 
-  rc = (mode == ENCRYPT) ? encryptFile(infile, IV, key, outfile) : decryptFile(infile, IV, key, outfile);
-
-  
+  rc = (mode == ENCRYPT) ?
+    encryptFile(infile, IV, key, outfile) :
+    decryptFile(infile, IV, key, outfile);
 
   return 0;
 }
