@@ -7,6 +7,10 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 #include <xyssl/sha2.h>
 #include <xyssl/aes.h>
 
@@ -32,6 +36,8 @@ static void printUsage(FILE *fp, char *progname) {
   fprintf(fp, "read the passphrase from the standard input.  If the program\n");
   fprintf(fp, "is being used in pipe mode, this will almost certainly fail.\n");
   fprintf(fp, "\n");
+  fprintf(fp, "\t-f\t\tExisting files may be overwritten if there is a name clash\n");
+  fprintf(fp, "\n");
   fprintf(fp, "EXCLUSIVE OPTIONAL PARAMETERS:\n");
   fprintf(fp, "\t-s suffix\tAppend this suffix to create output file names\n");
   fprintf(fp, "\t-S suffix\tReplace suffix of input file name with this suffix\n\t\t\tto create output file name\n");
@@ -39,8 +45,20 @@ static void printUsage(FILE *fp, char *progname) {
   fprintf(fp, "\n");
   fprintf(fp, "The default behaviour with named input files is to create\n");
   fprintf(fp, "output file names by appending .aes when encrypting and .raw\n");
-  fprintf(fp, "when decrypting.  No check is made to determine whether the\n");
-  fprintf(fp, "destination file already exists!\n");
+  fprintf(fp, "when decrypting.\n");
+  fprintf(fp, "\n");
+  fprintf(fp, "In all cases, the operation will be abandoned if the output\n");
+  fprintf(fp, "file already exists, UNLESS the -f options has been specified,\n");
+  fprintf(fp, "in which case, the file will be overwritten without a warning.\n");
+}
+
+static int exists(char *filename) {
+  struct stat stat_buf;
+  int rc;
+
+  rc = stat(filename, &stat_buf);
+
+  return (rc == 0) ? 1 : 0;
 }
 
 int main(int argc, char **argv) {
@@ -58,6 +76,7 @@ int main(int argc, char **argv) {
   char *outfilename;
 
   int suffixmode = APPEND;
+  int noclobber = 1;
 
   char *suffix = NULL;
 
@@ -94,6 +113,8 @@ int main(int argc, char **argv) {
       suffix = *(++argv);
     } else if (strcmp(*argv, "-r") == 0)
       suffixmode = REMOVE;
+    else if (strcmp(*argv, "-f") == 0)
+      noclobber = 0;;
   }
 
   if (mode == UNKNOWN) {
@@ -131,6 +152,11 @@ int main(int argc, char **argv) {
   infile = (infilename != NULL) ? fopen(infilename, "rb") : stdin;
 
   outfilename = makeOutputFileName(infilename, mode, suffixmode, suffix);
+
+  if (noclobber && exists(outfilename)) {
+    fprintf(stderr, "%s: output file %s already exists.  Use -f to force overwriting\n", progname, outfilename);
+    return 4;
+  }
 
   outfile = (outfilename != NULL) ? fopen(outfilename, "wb") : stdout;
 
