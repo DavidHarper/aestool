@@ -42,7 +42,7 @@ int getPassphrase(char *buffer, int size, int mode) {
 
   if (interactive) {
     ttyout = fopen("/dev/tty", "w");
-    fd = fileno(stdout);
+    fd = fileno(ttyout);
   }
   
   /*
