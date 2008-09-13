@@ -6,6 +6,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -19,37 +20,24 @@
 #define BUFSIZE 1024
 
 static void printUsage(FILE *fp, char *progname) {
-  fprintf(fp, "Usage: %s -e|-d [optional parameters] [filename]\n\n", progname);
+  fprintf(fp, "Usage: %s -e|-d [input filename] [output filename]\n\n", progname);
   fprintf(fp, "MANDATORY EXCLUSIVE PARAMETERS:\n");
   fprintf(fp, "\t-e\t\tEncrypt input\n");
   fprintf(fp, "\t-d\t\tDecrypt input\n");
   fprintf(fp, "\n");
   fprintf(fp, "If no named input files are specified, the program will try to\n");
   fprintf(fp, "encrypt/decrypt data from standard input and write the result to\n");
-  fprintf(fp, "standard output.  When the program is run in this mode, the use of\n");
-  fprintf(fp, "the -p option is strongly encouraged.\n");
+  fprintf(fp, "standard output.  The symbol - may be used to denote standard input\n");
+  fprintf(fp, "in place of an input file name or standard output in place of an\n");
+  fprintf(fp, "output file name.\n");
   fprintf(fp, "\n");
-  fprintf(fp, "OPTIONAL PARAMETERS:\n");
-  fprintf(fp, "\t-p filename\tRead passphrase from this file\n");
-  fprintf(fp, "\n");
-  fprintf(fp, "If this parameter is not specified, the program will try to\n");
-  fprintf(fp, "read the passphrase from the standard input.  If the program\n");
-  fprintf(fp, "is being used in pipe mode, this will almost certainly fail.\n");
-  fprintf(fp, "\n");
-  fprintf(fp, "\t-f\t\tExisting files may be overwritten if there is a name clash\n");
-  fprintf(fp, "\n");
-  fprintf(fp, "EXCLUSIVE OPTIONAL PARAMETERS:\n");
-  fprintf(fp, "\t-s suffix\tAppend this suffix to create output file names\n");
-  fprintf(fp, "\t-S suffix\tReplace suffix of input file name with this suffix\n\t\t\tto create output file name\n");
-  fprintf(fp, "\t-r\t\tRemove the suffix of the input file name to create output\n\t\t\tfile name\n");
-  fprintf(fp, "\n");
-  fprintf(fp, "The default behaviour with named input files is to create\n");
-  fprintf(fp, "output file names by appending .aes when encrypting and .raw\n");
-  fprintf(fp, "when decrypting.\n");
-  fprintf(fp, "\n");
-  fprintf(fp, "In all cases, the operation will be abandoned if the output\n");
-  fprintf(fp, "file already exists, UNLESS the -f options has been specified,\n");
-  fprintf(fp, "in which case, the file will be overwritten without a warning.\n");
+  fprintf(fp, "If the environment variable AESPASSFILE is defined and refers to a file\n");
+  fprintf(fp, "which cannot be read or written except by the user, then the passphrase\n");
+  fprintf(fp, "will be read from that file.\n\n");
+  fprintf(fp, "Otherwise, the passphrase will be read from /dev/tty.  In this case, if\n");
+  fprintf(fp, "the input file is being encrypted, the user will be prompted for the\n");
+  fprintf(fp, "passphrase twice, and the operation will be abandoned if the two versions\n");
+  fprintf(fp, "do not match.\n");
 }
 
 static int exists(char *filename) {
@@ -64,8 +52,8 @@ static int exists(char *filename) {
 int main(int argc, char **argv) {
   sha2_context sha_ctx;
   aes_context aes_ctx;
-  FILE *infile;
-  FILE *outfile;
+  FILE *infile = NULL;
+  FILE *outfile = NULL;
   unsigned char buffer[BUFSIZE];
   unsigned char *IV;
   unsigned char key[16];
@@ -73,61 +61,28 @@ int main(int argc, char **argv) {
   int mode = UNKNOWN;
 
   char *infilename = NULL;
-  char *outfilename;
-
-  int suffixmode = APPEND;
-  int noclobber = 1;
-
-  char *suffix = NULL;
-
-  char *passfilename = NULL;
+  char *outfilename = NULL;
 
   char *progname= argv[0];
 
   int rc;
 
-  for (argv++; *argv != NULL  && **argv == '-'; argv++) {
-    if (strcmp(*argv, "-e") == 0) {
-      if (mode == DECRYPT) {
-	fprintf(stderr, "%s: -d and -e are mutually exclusive options\n\n", progname);
-	printUsage(stderr, progname);
-	return 1;
-      }
-
-      mode = ENCRYPT;
-    } else if (strcmp(*argv, "-d") == 0) {
-      if (mode == ENCRYPT) {
-	fprintf(stderr, "%s: -d and -e are mutually exclusive options\n\n", progname);
-	printUsage(stderr, progname);
-	return 1;
-      }
-
-      mode = DECRYPT;
-    } else if (strcmp(*argv, "-p") == 0)
-      passfilename = *(++argv);
-    else if (strcmp(*argv, "-s") == 0) {
-      suffixmode = APPEND;
-      suffix = *(++argv);
-    } else if (strcmp(*argv, "-S") == 0) {
-      suffixmode = REPLACE;
-      suffix = *(++argv);
-    } else if (strcmp(*argv, "-r") == 0)
-      suffixmode = REMOVE;
-    else if (strcmp(*argv, "-f") == 0)
-      noclobber = 0;;
-  }
-
-  if (mode == UNKNOWN) {
+  if (argc < 2) {
     printUsage(stderr, progname);
     return 1;
   }
 
-  infile = (passfilename != NULL) ? fopen(passfilename, "r") : stdin;
+  if (strcmp(argv[1], "-e") == 0)
+    mode = ENCRYPT;
+  else if (strcmp(argv[1], "-d") == 0)
+    mode = DECRYPT;
+  else {
+    fprintf(stderr, "You must specify either -d or -e as the first command line option\n");
+    printUsage(stderr, progname);
+    return 1;
+  }
 
-  rc = getPassphrase(infile, (char *)buffer, sizeof(buffer), mode);
-
-  if (infile != stdin)
-    fclose(infile);
+  rc = getPassphrase((char *)buffer, sizeof(buffer), mode);
 
   switch (rc) {
   case BUFFER_TOO_SHORT:
@@ -147,16 +102,16 @@ int main(int argc, char **argv) {
 
   memset(buffer, '\0', sizeof(buffer));
 
-  infilename = *argv;
+  infilename = argc > 2 && strcmp(argv[2], "-") != 0 ? argv[2] : NULL;
 
   infile = (infilename != NULL) ? fopen(infilename, "rb") : stdin;
 
-  outfilename = makeOutputFileName(infilename, mode, suffixmode, suffix);
-
-  if (noclobber && exists(outfilename)) {
-    fprintf(stderr, "%s: output file %s already exists.  Use -f to force overwriting\n", progname, outfilename);
-    return 4;
+  if (infilename != NULL && infile == NULL) {
+    perror("Failed to open input file");
+    return 5;
   }
+
+  outfilename = argc > 3 && strcmp(argv[3], "-") != 0 ? argv[3] : NULL;
 
   outfile = (outfilename != NULL) ? fopen(outfilename, "wb") : stdout;
 

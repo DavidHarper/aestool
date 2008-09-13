@@ -11,14 +11,6 @@
 #define DECRYPT 2
 
 /*
- * Filename suffix mode values
- */
-
-#define APPEND 1
-#define REPLACE 2
-#define REMOVE 3
-
-/*
  * Error codes
  */
 
@@ -31,11 +23,9 @@
  * Function prototypes
  */
 
-int getPassphrase(FILE *infile, char *buffer, int size, int mode);
+int getPassphrase(char *buffer, int size, int mode);
 
 unsigned char * generateIV();
-
-char * makeOutputFileName(char *infilename, int mode, int suffixmode, char *suffix);
 
 int encryptFile(FILE *infile, unsigned char *IV, unsigned char *key, FILE *outfile);
 

@@ -3,15 +3,47 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #include "aestool.h"
 
-int getPassphrase(FILE *infile, char *buffer, int size, int mode) {
-  int interactive = isatty(fileno(infile));
+static int checkPassFile(struct stat *buf) {
+  int myuid = getuid();
+  return (myuid == buf->st_uid) && ((buf->st_mode & 0077) == 0);
+}
+
+static FILE * getPassFile() {
+  const char *aespassfile = getenv("AESPASSFILE");
+  struct stat pass_stat;
+  int rc;
+
+  if (aespassfile != NULL) {
+    rc = stat(aespassfile, &pass_stat);
+
+    if (rc == 0 && checkPassFile(&pass_stat))
+      return fopen(aespassfile, "r");
+  }
+
+  return fopen("/dev/tty", "r");
+}
+
+int getPassphrase(char *buffer, int size, int mode) {
+  FILE *infile = NULL;;
+  int interactive = 0;
   char *buffer2 = NULL;
-  int fd = fileno(stdout);
+  FILE *ttyout;
+  int fd = -1;
   struct termios ios;
   int k;
+
+  infile = getPassFile();
+  interactive = isatty(fileno(infile));
+
+  if (interactive) {
+    ttyout = fopen("/dev/tty", "w");
+    fd = fileno(stdout);
+  }
   
   /*
    * In interactive mode, disable echo on stdout and display a prompt.
