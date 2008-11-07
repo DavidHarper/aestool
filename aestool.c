@@ -56,7 +56,7 @@ int main(int argc, char **argv) {
   FILE *outfile = NULL;
   unsigned char buffer[BUFSIZE];
   unsigned char *IV;
-  unsigned char key[16];
+  unsigned char key[32];
 
   int mode = UNKNOWN;
 
@@ -116,7 +116,7 @@ int main(int argc, char **argv) {
   outfile = (outfilename != NULL) ? fopen(outfilename, "wb") : stdout;
 
   if (mode == ENCRYPT) {
-    IV = generateIV();
+    IV = key + 16;
   } else {
     IV = (unsigned char *)malloc(16);
     fread(IV, 1, 16, infile);

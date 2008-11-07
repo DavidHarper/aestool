@@ -18,7 +18,6 @@ LDLIBS = -lxyssl
 
 AESTOOL_OBJS = aestool.o \
 	getpassphrase.o \
-	generateIV.o \
 	encryptfile.o \
 	decryptfile.o
 
