@@ -39,7 +39,7 @@ gcry_error_t decryptFile(FILE *infile, unsigned char *IV, unsigned char *key, FI
 
     if (n == 0) {
       if (outbuffer == NULL)
-	return gcry_error_from_errno(EPIPE);
+	return gcry_error_from_errno(EINVAL);
 
       n = 16 - (int)outbuffer[15];
 
@@ -51,7 +51,7 @@ gcry_error_t decryptFile(FILE *infile, unsigned char *IV, unsigned char *key, FI
 
     outbuffer = obp;
     
-    error = gcry_cipher_decrypt(hd, outbuffer, sizeof(outbuffer), inbuffer, sizeof(inbuffer));
+    error = gcry_cipher_decrypt(hd, outbuffer, 16, inbuffer, 16);
 
     if (error != GPG_ERR_NO_ERROR)
       return error;
