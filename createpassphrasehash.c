@@ -9,6 +9,12 @@ gcry_error_t createPassphraseHash(char *buffer, size_t buffer_size, unsigned cha
   gcry_error_t error;
   unsigned char *result;
   int i;
+  unsigned int result_size;
+
+  result_size = gcry_md_get_algo_dlen(GCRY_MD_SHA256);
+
+  if (key_size < result_size)
+    return gcry_error(GPG_ERR_USER_1);
 
   error = gcry_md_open(&hd, GCRY_MD_SHA256, 0);
 
@@ -19,7 +25,7 @@ gcry_error_t createPassphraseHash(char *buffer, size_t buffer_size, unsigned cha
 
   result = gcry_md_read(hd, GCRY_MD_SHA256);
 
-  for (i = 0; i < 16; i++)
+  for (i = 0; i < result_size; i++)
     key[i] = result[i];
 
   gcry_md_close(hd);
