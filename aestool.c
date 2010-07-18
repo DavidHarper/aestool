@@ -18,7 +18,7 @@
 
 #define BUFSIZE 1024
 
-static void printUsage(FILE *fp, char *progname) {
+static void printUsage(FILE *fp, char *progname, const char *version) {
   fprintf(fp, "Usage: %s -e|-d [input filename] [output filename]\n\n", progname);
   fprintf(fp, "MANDATORY EXCLUSIVE PARAMETERS:\n");
   fprintf(fp, "\t-e\t\tEncrypt input\n");
@@ -37,6 +37,8 @@ static void printUsage(FILE *fp, char *progname) {
   fprintf(fp, "the input file is being encrypted, the user will be prompted for the\n");
   fprintf(fp, "passphrase twice, and the operation will be abandoned if the two versions\n");
   fprintf(fp, "do not match.\n");
+  fprintf(fp, "\n");
+  fprintf(fp, "This program uses libgcrypt version %s\n", (version ? version : "[unknown]"));
 }
 
 static int exists(char *filename) {
@@ -66,16 +68,14 @@ int main(int argc, char **argv) {
   gcry_error_t error;
   const char *version;
 
+  version = gcry_check_version(GCRYPT_VERSION);
+
   if (argc < 2) {
-    printUsage(stderr, progname);
+    printUsage(stderr, progname, version);
     return 1;
   }
 
-  version = gcry_check_version(GCRYPT_VERSION);
-
-  if (version) {
-    fprintf(stderr, "libgcrypt version: %s\n", version);
-  } else {
+  if (!version) {
     fprintf(stderr, "libgcrypt version mismatch: expected %s, found %s\n",
       GCRYPT_VERSION, version);
     return 99;
@@ -91,7 +91,7 @@ int main(int argc, char **argv) {
     mode = DECRYPT;
   else {
     fprintf(stderr, "You must specify either -d or -e as the first command line option\n");
-    printUsage(stderr, progname);
+    printUsage(stderr, progname, version);
     return 1;
   }
 
