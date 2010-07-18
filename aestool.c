@@ -12,8 +12,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <xyssl/sha2.h>
-#include <xyssl/aes.h>
+#include <gcrypt.h>
 
 #include "aestool.h"
 
@@ -50,8 +49,6 @@ static int exists(char *filename) {
 }
 
 int main(int argc, char **argv) {
-  sha2_context sha_ctx;
-  aes_context aes_ctx;
   FILE *infile = NULL;
   FILE *outfile = NULL;
   unsigned char buffer[BUFSIZE];
@@ -71,6 +68,15 @@ int main(int argc, char **argv) {
     printUsage(stderr, progname);
     return 1;
   }
+
+  if (!gcry_check_version(GCRYPT_VERSION)) {
+    fprintf(stderr, "libgcrypt version mismatch\n");
+    return 99;
+  }
+
+  gcry_control(GCRYCTL_DISABLE_SECMEM, 0);
+
+  gcry_control(GCRYCTL_INITIALIZATION_FINISHED, 0);
 
   if (strcmp(argv[1], "-e") == 0)
     mode = ENCRYPT;
@@ -95,10 +101,8 @@ int main(int argc, char **argv) {
   }
 
   rc = strlen((char *)buffer);
-  
-  sha2_starts(&sha_ctx, 0);
-  sha2_update(&sha_ctx, buffer, rc);
-  sha2_finish(&sha_ctx, key);
+
+  createPassphraseHash(buffer, (size_t)rc, key, sizeof(key));
 
   memset(buffer, '\0', sizeof(buffer));
 
