@@ -64,14 +64,20 @@ int main(int argc, char **argv) {
 
   int rc;
   gcry_error_t error;
+  const char *version;
 
   if (argc < 2) {
     printUsage(stderr, progname);
     return 1;
   }
 
-  if (!gcry_check_version(GCRYPT_VERSION)) {
-    fprintf(stderr, "libgcrypt version mismatch\n");
+  version = gcry_check_version(GCRYPT_VERSION);
+
+  if (version) {
+    fprintf(stderr, "libgcrypt version: %s\n", version);
+  } else {
+    fprintf(stderr, "libgcrypt version mismatch: expected %s, found %s\n",
+      GCRYPT_VERSION, version);
     return 99;
   }
 
