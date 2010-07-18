@@ -63,6 +63,7 @@ int main(int argc, char **argv) {
   char *progname= argv[0];
 
   int rc;
+  gcry_error_t error;
 
   if (argc < 2) {
     printUsage(stderr, progname);
@@ -102,7 +103,12 @@ int main(int argc, char **argv) {
 
   rc = strlen((char *)buffer);
 
-  createPassphraseHash(buffer, (size_t)rc, key, sizeof(key));
+  error = createPassphraseHash(buffer, (size_t)rc, key, sizeof(key));
+
+  if (error != GPG_ERR_NO_ERROR) {
+    handleGcryptError("An error occurred whilst hashing the passphrase", error, stderr);
+    return 98;
+  }
 
   memset(buffer, '\0', sizeof(buffer));
 
@@ -126,9 +132,14 @@ int main(int argc, char **argv) {
     fread(IV, 1, 16, infile);
   }
 
-  rc = (mode == ENCRYPT) ?
+  error = (mode == ENCRYPT) ?
     encryptFile(infile, IV, key, outfile) :
     decryptFile(infile, IV, key, outfile);
+
+  if (error != GPG_ERR_NO_ERROR) {
+    handleGcryptError("An error occurred whilst processing the data", error, stderr);
+    return 97;
+  }
 
   return 0;
 }

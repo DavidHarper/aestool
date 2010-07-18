@@ -1,12 +1,13 @@
 #include <stdio.h>
 
-#include <xyssl/sha2.h>
-#include <xyssl/aes.h>
+#include <gcrypt.h>
 
 #include "aestool.h"
 
-int encryptFile(FILE *infile, unsigned char *IV, unsigned char *key, FILE *outfile) {
-  aes_context aes_ctx;
+gcry_error_t encryptFile(FILE *infile, unsigned char *IV, unsigned char *key, FILE *outfile) {
+  gcry_error_t error;
+  gcry_cipher_hd_t hd;
+
   unsigned char inbuffer[16];
   unsigned char outbuffer[16];
 
@@ -14,9 +15,22 @@ int encryptFile(FILE *infile, unsigned char *IV, unsigned char *key, FILE *outfi
   int n;
   unsigned char pad;
 
-  fwrite(IV, 1, 16, outfile);
+  error = gcry_cipher_open(&hd, GCRY_CIPHER_AES, GCRY_CIPHER_MODE_OFB, 0);
 
-  aes_set_key(&aes_ctx, key, 128);
+  if (error != GPG_ERR_NO_ERROR)
+    return error;
+
+  error = gcry_cipher_setkey(hd, key, 16);
+
+  if (error != GPG_ERR_NO_ERROR)
+    return error;
+
+  error = gcry_cipher_setiv(hd, IV, 16);
+
+  if (error != GPG_ERR_NO_ERROR)
+    return error;
+
+  fwrite(IV, 1, 16, outfile);  
 
   while (!eof) {
     n = fread(inbuffer, 1, 16, infile);
@@ -30,16 +44,15 @@ int encryptFile(FILE *infile, unsigned char *IV, unsigned char *key, FILE *outfi
       eof = 1;
     }
     
-    aes_encrypt(&aes_ctx, IV, outbuffer);
+    error = gcry_cipher_encrypt(hd, outbuffer, sizeof(outbuffer), inbuffer, sizeof(inbuffer));
 
-    for (n = 0; n < 16; n++) {
-      IV[n] = outbuffer[n];
-
-      outbuffer[n] ^= inbuffer[n];
-    }
+    if (error != GPG_ERR_NO_ERROR)
+      return error;
 
     fwrite(outbuffer, 1, 16, outfile);
   }
 
-  return OK;
+  gcry_cipher_close(hd);
+
+  return GPG_ERR_NO_ERROR;
 }
