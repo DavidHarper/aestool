@@ -51,7 +51,7 @@ gcry_error_t decryptFile(FILE *infile, unsigned char *IV, unsigned char *key, FI
 
     outbuffer = obp;
     
-    error = gcry_cipher_encrypt(hd, outbuffer, sizeof(outbuffer), inbuffer, sizeof(inbuffer));
+    error = gcry_cipher_decrypt(hd, outbuffer, sizeof(outbuffer), inbuffer, sizeof(inbuffer));
 
     if (error != GPG_ERR_NO_ERROR)
       return error;
