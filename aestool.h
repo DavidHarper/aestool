@@ -27,6 +27,8 @@
 
 int getPassphrase(char *buffer, int size, int mode);
 
+int getCipherStrength();
+
 gcry_error_t createPassphraseHash(char *buffer, size_t buffer_size, unsigned char *key, size_t key_size);
 
 gcry_error_t encryptFile(FILE *infile, unsigned char *IV, unsigned char *key, FILE *outfile);

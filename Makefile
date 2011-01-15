@@ -14,6 +14,7 @@ LDLIBS = -lgcrypt
 AESTOOL_OBJS = aestool.o \
 	getpassphrase.o \
         createpassphrasehash.o \
+        getcipherstrength.o \
         handlegcrypterror.o \
 	encryptfile.o \
 	decryptfile.o

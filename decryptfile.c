@@ -16,12 +16,18 @@ gcry_error_t decryptFile(FILE *infile, unsigned char *IV, unsigned char *key, FI
   int eof = 0;
   int n;
 
-  error = gcry_cipher_open(&hd, GCRY_CIPHER_AES, GCRY_CIPHER_MODE_OFB, 0);
+  int strength = getCipherStrength();
+
+  int algorithm = strength == 256 ? GCRY_CIPHER_AES256 : GCRY_CIPHER_AES128;
+
+  size_t keylength = strength == 256 ? 32 : 16;
+
+  error = gcry_cipher_open(&hd, algorithm, GCRY_CIPHER_MODE_OFB, 0);
 
   if (error != GPG_ERR_NO_ERROR)
     return error;
 
-  error = gcry_cipher_setkey(hd, key, 16);
+  error = gcry_cipher_setkey(hd, key, keylength);
 
   if (error != GPG_ERR_NO_ERROR)
     return error;

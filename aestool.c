@@ -24,12 +24,14 @@ static void printUsage(FILE *fp, char *progname, const char *version) {
   fprintf(fp, "\t-e\t\tEncrypt input\n");
   fprintf(fp, "\t-d\t\tDecrypt input\n");
   fprintf(fp, "\n");
+  fprintf(fp, "INPUT AND OUTPUT FILES\n");
   fprintf(fp, "If no named input files are specified, the program will try to\n");
   fprintf(fp, "encrypt/decrypt data from standard input and write the result to\n");
   fprintf(fp, "standard output.  The symbol - may be used to denote standard input\n");
   fprintf(fp, "in place of an input file name or standard output in place of an\n");
   fprintf(fp, "output file name.\n");
   fprintf(fp, "\n");
+  fprintf(fp, "PASSPHRASE FILE\n");
   fprintf(fp, "If the environment variable AESPASSFILE is defined and refers to a file\n");
   fprintf(fp, "which cannot be read or written except by the user, then the passphrase\n");
   fprintf(fp, "will be read from that file.\n\n");
@@ -37,6 +39,13 @@ static void printUsage(FILE *fp, char *progname, const char *version) {
   fprintf(fp, "the input file is being encrypted, the user will be prompted for the\n");
   fprintf(fp, "passphrase twice, and the operation will be abandoned if the two versions\n");
   fprintf(fp, "do not match.\n");
+  fprintf(fp, "\n");
+  fprintf(fp, "ENCRYPTION STRENGTH\n");
+  fprintf(fp, "If the environment variable AES256 is defined, AES-256 encryption will be\n");
+  fprintf(fp, "used.  Otherwise, AES-128 encryption will be used.\n\n");
+  fprintf(fp, "The encryption strength is NOT stored in the output file, so it is the\n");
+  fprintf(fp, "user's responsibility to remember whether AES-128 or AES-256 encryption was\n");
+  fprintf(fp, "used to create any given file.\n");
   fprintf(fp, "\n");
   fprintf(fp, "This program uses libgcrypt version %s\n", (version ? version : "[unknown]"));
 }
@@ -54,7 +63,7 @@ int main(int argc, char **argv) {
   FILE *infile = NULL;
   FILE *outfile = NULL;
   unsigned char buffer[BUFSIZE];
-  unsigned char *IV;
+  unsigned char IV[16];
   unsigned char key[32];
 
   int mode = UNKNOWN;
@@ -131,11 +140,15 @@ int main(int argc, char **argv) {
 
   outfile = (outfilename != NULL) ? fopen(outfilename, "wb") : stdout;
 
+  if (outfilename != NULL && outfile == NULL) {
+    perror("Failed to open output file");
+    return 6;
+  }
+
   if (mode == ENCRYPT) {
-    IV = key + 16;
+    gcry_create_nonce(IV, sizeof(IV));
   } else {
-    IV = (unsigned char *)malloc(16);
-    fread(IV, 1, 16, infile);
+    fread(IV, 1, sizeof(IV), infile);
   }
 
   error = (mode == ENCRYPT) ?
