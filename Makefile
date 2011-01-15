@@ -2,22 +2,20 @@
 #
 # Created by David Harper at obliquity.com
 
-# Location of xyssl.com crypto library
-XYSSL = xyssl
-XYSSL_INC = $(XYSSL)/include
-XYSSL_LIB = $(XYSSL)/library
-
 # Define compiler options
 CC = gcc
-CFLAGS = -c -I $(XYSSL_INC) $(DEBUG)
+CFLAGS = -c $(DEBUG)
 
 # Definer linker options
 LD = gcc
-LDOPTS = -L$(XYSSL_LIB) $(DEBUG)
-LDLIBS = -lxyssl
+LDOPTS = $(DEBUG)
+LDLIBS = -lgcrypt
 
 AESTOOL_OBJS = aestool.o \
 	getpassphrase.o \
+        createpassphrasehash.o \
+        getcipherstrength.o \
+        handlegcrypterror.o \
 	encryptfile.o \
 	decryptfile.o
 

@@ -12,25 +12,26 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <xyssl/sha2.h>
-#include <xyssl/aes.h>
+#include <gcrypt.h>
 
 #include "aestool.h"
 
 #define BUFSIZE 1024
 
-static void printUsage(FILE *fp, char *progname) {
+static void printUsage(FILE *fp, char *progname, const char *version) {
   fprintf(fp, "Usage: %s -e|-d [input filename] [output filename]\n\n", progname);
   fprintf(fp, "MANDATORY EXCLUSIVE PARAMETERS:\n");
   fprintf(fp, "\t-e\t\tEncrypt input\n");
   fprintf(fp, "\t-d\t\tDecrypt input\n");
   fprintf(fp, "\n");
+  fprintf(fp, "INPUT AND OUTPUT FILES\n");
   fprintf(fp, "If no named input files are specified, the program will try to\n");
   fprintf(fp, "encrypt/decrypt data from standard input and write the result to\n");
   fprintf(fp, "standard output.  The symbol - may be used to denote standard input\n");
   fprintf(fp, "in place of an input file name or standard output in place of an\n");
   fprintf(fp, "output file name.\n");
   fprintf(fp, "\n");
+  fprintf(fp, "PASSPHRASE FILE\n");
   fprintf(fp, "If the environment variable AESPASSFILE is defined and refers to a file\n");
   fprintf(fp, "which cannot be read or written except by the user, then the passphrase\n");
   fprintf(fp, "will be read from that file.\n\n");
@@ -38,6 +39,15 @@ static void printUsage(FILE *fp, char *progname) {
   fprintf(fp, "the input file is being encrypted, the user will be prompted for the\n");
   fprintf(fp, "passphrase twice, and the operation will be abandoned if the two versions\n");
   fprintf(fp, "do not match.\n");
+  fprintf(fp, "\n");
+  fprintf(fp, "ENCRYPTION STRENGTH\n");
+  fprintf(fp, "If the environment variable AES256 is defined, AES-256 encryption will be\n");
+  fprintf(fp, "used.  Otherwise, AES-128 encryption will be used.\n\n");
+  fprintf(fp, "The encryption strength is NOT stored in the output file, so it is the\n");
+  fprintf(fp, "user's responsibility to remember whether AES-128 or AES-256 encryption was\n");
+  fprintf(fp, "used to create any given file.\n");
+  fprintf(fp, "\n");
+  fprintf(fp, "This program uses libgcrypt version %s\n", (version ? version : "[unknown]"));
 }
 
 static int exists(char *filename) {
@@ -50,12 +60,10 @@ static int exists(char *filename) {
 }
 
 int main(int argc, char **argv) {
-  sha2_context sha_ctx;
-  aes_context aes_ctx;
   FILE *infile = NULL;
   FILE *outfile = NULL;
   unsigned char buffer[BUFSIZE];
-  unsigned char *IV;
+  unsigned char IV[16];
   unsigned char key[32];
 
   int mode = UNKNOWN;
@@ -66,11 +74,25 @@ int main(int argc, char **argv) {
   char *progname= argv[0];
 
   int rc;
+  gcry_error_t error;
+  const char *version;
+
+  version = gcry_check_version(GCRYPT_VERSION);
 
   if (argc < 2) {
-    printUsage(stderr, progname);
+    printUsage(stderr, progname, version);
     return 1;
   }
+
+  if (!version) {
+    fprintf(stderr, "libgcrypt version mismatch: expected %s, found %s\n",
+      GCRYPT_VERSION, version);
+    return 99;
+  }
+
+  gcry_control(GCRYCTL_DISABLE_SECMEM, 0);
+
+  gcry_control(GCRYCTL_INITIALIZATION_FINISHED, 0);
 
   if (strcmp(argv[1], "-e") == 0)
     mode = ENCRYPT;
@@ -78,7 +100,7 @@ int main(int argc, char **argv) {
     mode = DECRYPT;
   else {
     fprintf(stderr, "You must specify either -d or -e as the first command line option\n");
-    printUsage(stderr, progname);
+    printUsage(stderr, progname, version);
     return 1;
   }
 
@@ -95,10 +117,13 @@ int main(int argc, char **argv) {
   }
 
   rc = strlen((char *)buffer);
-  
-  sha2_starts(&sha_ctx, 0);
-  sha2_update(&sha_ctx, buffer, rc);
-  sha2_finish(&sha_ctx, key);
+
+  error = createPassphraseHash(buffer, (size_t)rc, key, sizeof(key));
+
+  if (error != GPG_ERR_NO_ERROR) {
+    handleGcryptError("An error occurred whilst hashing the passphrase", error, stderr);
+    return 98;
+  }
 
   memset(buffer, '\0', sizeof(buffer));
 
@@ -115,16 +140,25 @@ int main(int argc, char **argv) {
 
   outfile = (outfilename != NULL) ? fopen(outfilename, "wb") : stdout;
 
-  if (mode == ENCRYPT) {
-    IV = key + 16;
-  } else {
-    IV = (unsigned char *)malloc(16);
-    fread(IV, 1, 16, infile);
+  if (outfilename != NULL && outfile == NULL) {
+    perror("Failed to open output file");
+    return 6;
   }
 
-  rc = (mode == ENCRYPT) ?
+  if (mode == ENCRYPT) {
+    gcry_create_nonce(IV, sizeof(IV));
+  } else {
+    fread(IV, 1, sizeof(IV), infile);
+  }
+
+  error = (mode == ENCRYPT) ?
     encryptFile(infile, IV, key, outfile) :
     decryptFile(infile, IV, key, outfile);
+
+  if (error != GPG_ERR_NO_ERROR) {
+    handleGcryptError("An error occurred whilst processing the data", error, stderr);
+    return 97;
+  }
 
   return 0;
 }
