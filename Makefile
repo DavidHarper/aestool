@@ -43,4 +43,4 @@ clean:
 tarball: aestool.tgz
 
 aestool.tgz:
-	tar zcvf $@ *.c *.h Makefile
+	tar zcvf $@ *.c *.h Makefile LICENSE
