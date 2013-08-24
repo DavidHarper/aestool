@@ -1,8 +1,22 @@
-/*
- * AES encryption/decryption utility
- *
- * Author: David Harper at obliquity.com
- */
+/***********************************************************************
+aestool : an AES encryption utility
+
+Copyright (C) 2013 David Harper at obliquity.com
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see [http://www.gnu.org/licenses/].
+
+***********************************************************************/
 
 #include <string.h>
 #include <stdlib.h>
@@ -19,7 +33,16 @@
 #define BUFSIZE 1024
 
 static void printUsage(FILE *fp, char *progname, const char *version) {
+  fprintf(fp, "aestool : an AES encryption utility\n");
+  fprintf(fp, "\n");
+  fprintf(fp, "Copyright (C) 2013 David Harper at obliquity.com\n\n");
+  fprintf(fp, "This program comes with ABSOLUTELY NO WARRANTY.\n\n");
+  fprintf(fp, "This is free software, and you are welcome to redistribute it\n");
+  fprintf(fp, "under certain conditions.  Please refer to the GNU General\n");
+  fprintf(fp, "Public License V3 [http://www.gnu.org/licenses/].\n\n");
+
   fprintf(fp, "Usage: %s -e|-d [input filename] [output filename]\n\n", progname);
+
   fprintf(fp, "MANDATORY EXCLUSIVE PARAMETERS:\n");
   fprintf(fp, "\t-e\t\tEncrypt input\n");
   fprintf(fp, "\t-d\t\tDecrypt input\n");
