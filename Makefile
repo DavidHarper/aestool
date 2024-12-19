@@ -24,23 +24,29 @@ LD = gcc
 LDOPTS = $(DEBUG)
 LDLIBS = -lgcrypt
 
-AESTOOL_OBJS = aestool.o \
-	getpassphrase.o \
-        createpassphrasehash.o \
-        getcipherstrength.o \
-        handlegcrypterror.o \
-	encryptfile.o \
-	decryptfile.o
+SRC_DIR   := src
+BUILD_DIR := build
+EXE 	  := $(BUILD_DIR)/aestool
 
-all: aestool
+SRCS := $(shell find $(SRC_DIR) -name '*.c')
+OBJS := $(subst $(SRC_DIR), $(BUILD_DIR), $(SRCS:.c=.o))
 
-aestool: $(AESTOOL_OBJS)
-	$(LD) -o $@ $(LDOPTS) $(AESTOOL_OBJS) $(LDLIBS)
+all : $(OBJS) $(EXE)
+
+$(EXE) : $(OBJS) | $(BUILD_DIR)
+	@echo "------ Make $(EXE) ------"
+	rm -f $(EXE)
+	$(LD) -o $@ $(LDOPTS) $(OBJS) $(LDLIBS)
+
+$(BUILD_DIR)/%.o : $(SRC_DIR)/%.c | $(BUILD_DIR)
+	@echo "------ Make $(@) ------"
+	rm -f $@
+	$(CC) $(CFLAGS) -o $@ $<
+
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
+
+-include $(BUILD_DIR)/*.d
 
 clean:
-	/bin/rm -f *.o aestool aestool.tgz *~
-
-tarball: aestool.tgz
-
-aestool.tgz:
-	tar zcvf $@ *.c *.h Makefile LICENSE
+	rm -rf $(BUILD_DIR)/*
