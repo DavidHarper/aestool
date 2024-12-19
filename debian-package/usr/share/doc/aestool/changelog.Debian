@@ -1,0 +1,6 @@
+aestool (1.0-1) stable; urgency=low
+
+  [ DavidHarper ]
+  * AES encryption/decryption tool.
+
+ -- David Harper <david@obliquity.net>  Thu,  19 Dec 2024 07:00:00 +0000 

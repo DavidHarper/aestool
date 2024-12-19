@@ -1,0 +1,9 @@
+Package: aestool
+Version: 1.0.1
+Section: utils
+Priority: optional
+Architecture: amd64
+Maintainer: David Harper <david@obliquity.net>
+Depends: libc6, libgcrypt
+Description: This is a file encryption/decryption tool.
+ It uses the AES encryption algorithm in OFB mode at 128- or 256-bit strength.
